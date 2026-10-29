@@ -1,0 +1,43 @@
+{
+  "name": "deye-glass-widget",
+  "version": "2.0.0",
+  "description": "Deye glass desktop monitor",
+  "author": "Coresmith",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "demo": "electron . --demo",
+    "test": "node --test test.cjs",
+    "dist": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "45.1.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.deye.glass.widget",
+    "productName": "Deye Glass",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "preload-settings.cjs",
+      "core.cjs",
+      "index.html",
+      "settings.html"
+    ],
+    "extraResources": [
+      {
+        "from": "../sounds",
+        "to": "sounds",
+        "filter": ["*.wav"]
+      }
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "Deye-Glass.exe"
+    }
+  }
+}

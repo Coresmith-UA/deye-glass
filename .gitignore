@@ -1,0 +1,53 @@
+# Чувствительные данные
+config.ini
+deye_token.txt
+*.log
+
+# Electron build artefacts
+electron/node_modules/
+electron/dist/
+electron/package-lock.json
+
+# User state (generated at runtime, machine-specific)
+window.json
+history.json
+
+# Archives and binaries
+*.zip
+*.exe
+
+# Old unpacked distribution
+Deye Glass/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

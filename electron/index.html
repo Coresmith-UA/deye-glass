@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src 'none'; connect-src 'none';"><title>Deye Glass</title>
+<style>
+:root{color-scheme:dark;--accent:#00e995;--secondary:#00c6df;--muted:#a3afc0;--glass:.70}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}body{font-family:'Segoe UI Variable Display','Segoe UI',Arial,sans-serif;color:#f5f8ff;font-variant-numeric:tabular-nums;user-select:none}button{font:inherit;color:inherit;cursor:pointer}#widget{position:relative;width:640px;height:580px;transform-origin:0 0;border-radius:24px;border:1px solid #bcd6ee4d;overflow:hidden;background:linear-gradient(153deg,#7c91ae30 0%,#0e182338 34%,#090f1c60 100%),rgba(5,16,25,var(--glass));box-shadow:inset 0 1px 0 #e4eeff16,inset 0 0 50px #00000025;backdrop-filter:blur(30px) saturate(125%)}#widget:before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 8% 5%,#b4d7ff10,transparent 50%),radial-gradient(ellipse at 100% 60%,#9576740a,transparent 50%)}.toolbar{position:absolute;z-index:10;right:14px;top:3px;display:flex;gap:3px;opacity:0;transition:opacity .18s}#widget:hover .toolbar,.toolbar:focus-within{opacity:1}.toolbar button{width:27px;height:23px;border:1px solid #b8d1ef20;background:#172432e8;border-radius:6px;font-size:16px;line-height:16px}.toolbar button:hover{background:#344454}
+.toolbar button svg{width:13px;height:13px;vertical-align:-2px}
+/* The pressed pin is deliberately NOT --accent: that colour means the system state, and a lock the
+   user set is not a state of the inverter. A pinned widget would otherwise turn red during an
+   outage. The filled background carries it instead, with aria-pressed for anything not looking. */
+#pin[aria-pressed=true]{background:#31506b;border-color:#8fb4d8;color:#eaf3ff}
+/* The muted speaker is dimmed as well as crossed out: at 13px the two glyphs differ by a few
+   pixels, and the slash alone is easy to miss on a scaled-down widget. */
+#mute[aria-pressed=true]{color:var(--muted)}
+/* While pinned the surface is not draggable, so it must not offer the move cursor. */
+#widget.pinned{cursor:default}.header{position:absolute;top:18px;left:26px;right:26px;height:74px;display:flex;justify-content:space-between;border-bottom:1px solid #c5d9ee12}.brand{font-size:34px;letter-spacing:5px;font-weight:600;line-height:43px;color:#d8e4f1;text-shadow:0 1px 1px #000}.model{font-size:17px;letter-spacing:1px;color:#96a8bd;line-height:23px}/* Time and date share one line box rather than stacking: the header's middle was empty while the
+   clock was squeezed into two cramped rows. Plain inline layout, not flex - a single line box
+   baseline-aligns the two sizes for free, and its 66px height matches the DEYE/SUN-8K stack beside
+   it, so the clock centres against the brand without a hand-tuned padding. */
+.clock{text-align:right;white-space:nowrap;line-height:66px;color:#a8b5c7;font-weight:300}
+.clock .time{font-size:40px;letter-spacing:.5px;color:#cfdbea}
+.clock .date{font-size:18px;letter-spacing:.3px;color:#98a7bb;margin-left:15px}.gauge{position:absolute;width:282px;height:282px;left:17px;top:113px;border:1px solid #04ddac32;border-radius:50%;background:radial-gradient(circle,#00101b60 35%,#01e8a906 65%,transparent 70%)}.track,.ring,.ring-glow{position:absolute;inset:12px;border-radius:50%;mask:radial-gradient(farthest-side,transparent calc(100% - 15px),#000 calc(100% - 14px));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 15px),#000 calc(100% - 14px))}.track{background:#183a3c94}.ring,.ring-glow{background:conic-gradient(from 0deg,var(--accent) 0%,var(--accent) var(--p1,33%),var(--secondary) var(--p2,72%),#58ffe0 var(--progress,92%),transparent var(--progress,92%));}.ring-glow{inset:8px;opacity:.26;filter:blur(10px);mask:none;background:none;box-shadow:inset 0 0 24px var(--accent),0 0 16px #00dbb426}.cap{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--accent);left:calc(50% - 7px);top:12px;box-shadow:0 0 18px #00dca440}.cap.end{background:#58ffe0}/* Only .soc stays in flow, so it is concentric with the ring; the mark and the kWh line are placed
+   symmetrically around it. Centring all three as one column used to put 46px above the number and
+   31px below it, which pushed the percentage ~8px below the centre of the gauge.
+   --soc-half is half of .soc's line box (80px x 1.1 / 2) and must follow its font-size. */
+.gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;--soc-half:44px}.battery-mark{position:absolute;left:calc(50% - 20px);bottom:calc(50% + var(--soc-half));width:40px;height:40px;color:var(--accent);margin-bottom:6px;filter:drop-shadow(0 0 7px #00e79870)}/* --soc-nudge corrects optical centring, and the value is read off the font rather than guessed:
+   Segoe UI has ascent 2210 and descent 514 of 2048 upem, so a 1.1 line box puts the baseline at
+   .964em and the cap height of .70em makes the ink of the digits sit .064em BELOW the middle of that
+   box. Expressed in em, so one value serves both layouts and any font-size step. */
+.soc{font-size:80px;line-height:1.1;font-weight:600;letter-spacing:-.05em;text-shadow:0 2px 9px #0006;transform:translateY(var(--soc-nudge,-.064em))}/* .wide is set by the renderer at three digits. 100% is simply wider than the hole in the ring: measured against Segoe UI it is 120px of text in a 111px opening (compact) and 241 in 230 (large), so without this the number sits on top of the ring - visible in the screenshot that started this. */.soc.wide{font-size:76px}/* The mark above and the kWh line below are placed from half the line box, so the smaller step has to move them with it. */.gauge-center:has(.soc.wide){--soc-half:41.8px}.soc small{font-size:.6em;letter-spacing:-.02em;font-weight:400;margin-left:.05em}.energy{position:absolute;left:0;right:0;text-align:center;top:calc(50% + var(--soc-half));font-size:19px;color:#c3cbd6;margin-top:8px;font-weight:400}.energy span{color:#95a4b5}/* The status card had 4px above it and 11px below it, so it sat visibly off-centre between the
+   header rule and the first metric. Both gaps are now the same token; 92px is where the header ends
+   (its top 18px + height 74px). The compact layout overrides `top` and zeroes the lower margin. */
+.right{position:absolute;left:306px;right:21px;--card-gap:8px;top:calc(92px + var(--card-gap))}.status-card{height:80px;border:1px solid #d0e1f13b;border-radius:22px;background:linear-gradient(120deg,#9bb1c40c,#dfbec60b);box-shadow:inset 0 1px 1px #fff1;display:flex;align-items:center;gap:27px;padding:0 17px}/* Status colour comes from --accent only, so a state without its own theme inherits the
+   healthy green instead of silently falling back to a hardcoded amber. */
+.status-icon{width:43px;height:43px;border:4px solid currentColor;border-radius:50%;color:var(--accent);padding:3px;box-shadow:0 0 23px color-mix(in srgb,currentColor 18%,transparent),inset 0 0 8px color-mix(in srgb,currentColor 14%,transparent)}.status-title{font-size:20px;font-weight:600;letter-spacing:.4px;color:var(--accent);white-space:nowrap}.status-sub{font-size:14px;color:#a6b2c3;margin-top:5px;letter-spacing:.5px}/* How long the current state has
+   held. Deliberately NOT in --accent: the duration is a fact about time, not a second copy of the
+   state, and two accent-coloured lines in one card would compete with the state name itself. */
+.since{font-size:13px;color:#8e9cad;margin-top:3px;letter-spacing:.3px;font-variant-numeric:tabular-nums}
+.since:empty{display:none}.compact .since{font-size:14px;margin:0 0 0 9px;color:#8e9cad}.metrics{margin-top:var(--card-gap)}.metric{height:88px;margin:0 1px 0 7px;display:flex;align-items:center;gap:28px;border-top:1px solid #d3e4f21a;position:relative;padding-left:14px}.icon{width:32px;height:38px;color:#b4bdc9;flex-shrink:0;filter:drop-shadow(0 1px 1px #0009)}.label{font-size:17px;color:#a8b1c0;letter-spacing:.4px;margin-bottom:3px}.value{font-size:29px;line-height:35px;font-weight:600;letter-spacing:.2px;white-space:nowrap}.value .unit{font-size:27px;font-weight:400;margin-left:5px}/* Battery flow arrow. Colour comes from --accent like every other state-carrying mark, so it can
+   never go back to being permanently amber. Centred from 50% rather than a hardcoded top, so the
+   same rule holds in both layouts and survives a change of row height or icon size. */
+.power-hint{position:absolute;right:4px;top:50%;transform:translateY(-50%);color:var(--accent);width:23px;height:25px}.chart-wrap{position:absolute;left:26px;right:24px;bottom:88px;height:58px;display:flex;align-items:flex-end;gap:10px}.bars{display:flex;align-items:flex-end;gap:3px;height:56px;flex:1;min-width:0}.bar{flex:1;min-width:0;border-radius:1.5px 1.5px 0 0;background:#8995a44d}.chart-label{color:#8c9caf;font-size:14px;margin-bottom:12px;white-space:nowrap}.empty-chart{font-size:12px;color:#8a9aad;border-bottom:1px solid #a6bdcf20;width:100%;padding-bottom:10px}.day{position:absolute;left:0;right:0;bottom:28px;padding:12px 24px 0 26px;display:flex;justify-content:space-between;border-top:1px solid #a6bdcf26}.day-item{display:flex;flex-direction:column;gap:5px;min-width:0}.day-head{display:flex;align-items:center;gap:7px;white-space:nowrap}.day-dot{width:7px;height:7px;border-radius:2px;flex:none}.d-grid{background:#00e995}.d-outage{background:#ff5d68}.d-charging{background:#ffb724}.d-onbattery{background:#00c6df}.day-label{font-size:10px;letter-spacing:.7px;color:#8c9caf}.day-value{font-size:19px;font-weight:300;color:#cfdae8;letter-spacing:0;font-variant-numeric:tabular-nums}.compact .day{display:none}.today-total{position:absolute;left:17px;width:282px;top:398px;display:flex;align-items:baseline;justify-content:center;gap:9px}.today-label{font-size:10px;letter-spacing:.7px;color:#8c9caf}.today-total b{font-size:23px;font-weight:300;color:#d4deea;letter-spacing:0;font-variant-numeric:tabular-nums}.today-unit{font-size:13px;color:#b7c3d3}.compact .today-total{display:none}.footer{position:absolute;bottom:8px;left:27px;right:25px;color:#96a6b8;font-size:10px;display:flex;justify-content:space-between;letter-spacing:.2px}.demo-label{color:#c0b084}.error{color:#ff949a;max-width:460px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.compact-header{display:none}svg{fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}.symbols{position:absolute;width:0;height:0;overflow:hidden}.hidden{display:none!important}
+#widget.compact{width:440px;height:220px;border-radius:20px}.compact .header,.compact .status-card,.compact .label,.compact .battery-mark,.compact .energy,.compact .chart-wrap{display:none}.compact .compact-header{display:flex;position:absolute;left:18px;right:18px;top:15px;justify-content:space-between;align-items:center;font-size:16px;color:var(--accent);letter-spacing:.7px}.dot{width:13px;height:13px;border-radius:50%;display:inline-block;background:currentColor;box-shadow:0 0 15px color-mix(in srgb,currentColor 30%,transparent);margin-right:13px;vertical-align:-1px}.compact-time{font-size:19px;color:#aab7c8;font-weight:300;letter-spacing:0}.compact .gauge{width:139px;height:139px;left:19px;top:61px}.compact .track,.compact .ring{inset:6px;mask:radial-gradient(farthest-side,transparent calc(100% - 8px),#000 calc(100% - 7px))}.compact .ring-glow{inset:6px;box-shadow:inset 0 0 16px var(--accent),0 0 13px #00dbb426}.compact .cap{width:8px;height:8px;left:calc(50% - 4px);top:6px}.compact .soc{font-size:39px}.compact .soc.wide{font-size:36px}.compact .right{left:180px;right:18px;top:50px}.compact .metrics{margin:0}.compact .metric{height:49px;padding:0 9px 0 9px;gap:30px;margin:0}.compact .icon{width:25px;height:30px}.compact .value{font-size:24px;font-weight:600;letter-spacing:0;flex:1;text-align:right;line-height:32px}.compact .value .unit{font-size:22px;color:#b7c3d3;margin-left:5px}.compact .metric-info{flex:1}.compact .power-hint{right:0;width:18px;height:22px}.compact .metric:first-child{padding-right:27px}.compact .metric:not(:first-child){padding-right:27px}.compact .footer{bottom:5px;left:20px;right:20px;font-size:9px}.compact .error{max-width:280px}.compact .toolbar{top:3px;right:82px}.compact .status-name{font-size:14px;letter-spacing:.4px}.offline .status-title,.critical .status-title,.outage .status-title,.discharging .status-title{font-size:17px}
+.offline{--accent:#8697ac!important;--secondary:#546e85!important}.offline .ring,.offline .cap{opacity:.35}.stale-mark{color:#ffcc75}
+/* State palette. Each state sets only --accent/--secondary; those already drive the SOC ring,
+   the status card, the battery mark and the compact dot, so a colour lives in exactly one place.
+   green = on grid, cyan = on grid but draining the battery, amber = charging,
+   red = grid confirmed down, pulsing red = battery critically low. */
+.grid{--accent:#00e995;--secondary:#00c6df}
+.discharging{--accent:#00c6df;--secondary:#58ffe0}
+.charging{--accent:#ffb724;--secondary:#ffdf66}
+.outage{--accent:#ff5d68;--secondary:#ff9a7e}
+.critical{--accent:#ff5d68;--secondary:#e88851}
+.outage .ring,.discharging .ring,.critical .ring{background:conic-gradient(var(--accent) 0%,var(--secondary) var(--progress,68%),transparent var(--progress,68%))}
+.outage .cap.end,.discharging .cap.end,.critical .cap.end{background:var(--secondary)}
+/* Only the two states that need attention right now pulse. */
+@keyframes pulse{50%{opacity:.42}}
+.charging .status-icon,.charging .status-title,.charging .dot,.critical .status-icon,.critical .status-title,.critical .dot{animation:pulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.charging .status-icon,.charging .status-title,.charging .dot,.critical .status-icon,.critical .status-title,.critical .dot{animation:none}}
+/* 24h bars. Height is the average home load, colour is the state - the same colour language as
+   the status card. Muted alphas on purpose: these are fills over a large area, not accents.
+   .s-none is a gap in the history and must read as absent, not as a low reading. */
+.bar.s-grid{background:#00e9954d}
+.bar.s-discharging{background:#00c6df5e}
+.bar.s-charging{background:#ffb7245e}
+/* Outage and critical also get a solid 3px base, so contiguous bins form a visible rule along the
+   baseline. That is a non-hue cue: scripts/validate_palette.js puts the red/amber pair at tritan
+   ΔE 6.4, which is only legal with secondary encoding, and unlike the status card these bars carry
+   no text label. It doubles as the answer to "when exactly was the outage". */
+.bar.s-outage,.bar.s-critical{background:#ff5d6866;box-shadow:inset 0 -3px 0 #ff5d68}
+.bar.s-unknown{background:#8995a466}
+.bar.s-none{background:#5e6c7d;opacity:.3}
+/* Preview background belongs only to the browser demo, never to the desktop window. */
+body.preview{display:flex;align-items:center;justify-content:center;background:transparent}body.preview #widget{box-shadow:0 22px 80px #0007,inset 0 1px 0 #f0f8ff15;transform:none!important}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<svg class="symbols"><defs>
+<symbol id="i-battery" viewBox="0 0 28 34"><path d="M10 5V2h8v3h5v26H5V5Z"/><path d="M9 21h10v7H9z" fill="currentColor" stroke="none"/><path d="m14 11-3 5h4l-2 5 5-7h-4l2-3" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-battery-wide" viewBox="0 0 40 32"><rect x="3" y="5" width="30" height="22" rx="2"/><path d="M34 12h3v8h-3M11 2h13M8 10h20v12H8"/><path d="m21 8-7 9h5l-2 8 9-12h-6z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-grid" viewBox="0 0 32 38"><path d="m7 35 9-31 9 31M3 12h26M7 5h18M2 23h28M11 12l12 11-16 12M21 12 9 23l16 12M13 4h6"/></symbol>
+<symbol id="i-home" viewBox="0 0 34 36"><path d="m2 16 15-14 15 14M6 13v20h9V23h5v10h8V13M25 5v7"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 30"><path d="M13 1 3 17h8l-2 12L23 11h-9l4-10Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-power" viewBox="0 0 28 28"><path d="M14 2v12M8 6a10 10 0 1 0 12 0" stroke-width="2.4"/></symbol>
+<!-- Battery flow direction. The arrow is drawn against a baseline on purpose: a bare arrow pointing
+     down reads as "the value is falling" instead of "energy is entering the battery". -->
+<symbol id="i-flow-in" viewBox="0 0 24 28"><path d="M12 2v14m0 0-6-6m6 6 6-6M4 25h16" stroke-width="2.6"/></symbol>
+<symbol id="i-flow-out" viewBox="0 0 24 28"><path d="M12 17V3m0 0-6 6m6-6 6 6M4 25h16" stroke-width="2.6"/></symbol>
+<symbol id="i-flow-idle" viewBox="0 0 24 28"><path d="M6 14h12" stroke-width="2.6"/></symbol>
+<!-- A thumbtack seen from the side. Drawn as head/body/point rather than the usual tilted pin
+     because at 13px a tilted outline turns into an unreadable blob. -->
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-3 3v2h10v-2l-3-3V3M12 14v7" stroke-width="2"/></symbol>
+<!-- Two glyphs rather than one glyph plus a highlight: a filled button would read as "sound is on"
+     exactly when it means the opposite. The crossed speaker is the state; aria-pressed carries it
+     for anything not looking at pixels. -->
+<symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h3l5 4V5L7 9H4M16 8.5a4.5 4.5 0 0 1 0 7M19 5.5a8 8 0 0 1 0 13" stroke-width="2"/></symbol>
+<symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M4 9v6h3l5 4V5L7 9H4M16 9.5l6 5M22 9.5l-6 5" stroke-width="2"/></symbol>
+</defs></svg>
+<main id="widget" aria-label="Deye — Inverter Monitor">
+<div class="toolbar"><button id="mute" title="Mute" aria-label="Mute" aria-pressed="false"><svg><use id="mute-symbol" href="#i-sound"/></svg></button><button id="pin" title="Pin" aria-label="Pin" aria-pressed="false"><svg><use href="#i-pin"/></svg></button><button id="resize" title="Resize (double click)" aria-label="Large / Compact">▱</button><button id="menu" title="Menu" aria-label="Menu">⋯</button><button id="hide" title="Hide to tray" aria-label="Hide">−</button></div>
+<header class="header"><div><div class="brand">DEYE</div><div class="model">SUN-8K</div></div><div class="clock"><span class="time">23:17</span><span class="date">Вт, 28 жов</span></div></header>
+<div class="compact-header"><span><i class="dot"></i><span class="status-name">CHARGING</span><span class="since"></span></span><span class="compact-time time">23:17</span></div>
+<div class="gauge" role="meter" aria-label="Battery charge" aria-valuemin="0" aria-valuemax="100"><div class="track"></div><div class="ring-glow"></div><div class="ring"></div><div class="cap start"></div><div class="cap end"></div><div class="gauge-center"><svg class="battery-mark"><use href="#i-battery-wide"/></svg><div class="soc"><span id="soc">—</span><small>%</small></div><div class="energy"><b id="energy" style="font-weight:400">—</b><span id="capacity"> / 16 kWh</span></div></div></div>
+<div class="today-total" role="group"><span class="today-label" data-i18n="todayLabel">TODAY</span><b id="today-kwh">—</b><span class="today-unit">kWh</span></div>
+<section class="right"><div class="status-card"><svg class="status-icon"><use id="status-symbol" href="#i-bolt"/></svg><div><div class="status-title">CONNECTING</div><div class="status-sub">DEYE CLOUD</div><div class="since"></div></div></div><div class="metrics">
+<div class="metric"><svg class="icon"><use href="#i-battery"/></svg><div class="metric-info"><div class="label" data-i18n="batteryLabel">BATTERY</div><div class="value"><span id="battery">—</span><span class="unit">kW</span></div></div><svg class="power-hint" role="img"><use id="power-symbol" href="#i-flow-idle"/></svg></div>
+<div class="metric"><svg class="icon"><use href="#i-grid"/></svg><div class="metric-info"><div class="label" data-i18n="gridLabel">GRID</div><div class="value"><span id="grid">—</span><span class="unit">kW</span></div></div></div>
+<div class="metric"><svg class="icon"><use href="#i-home"/></svg><div class="metric-info"><div class="label" data-i18n="homeLabel">HOME</div><div class="value"><span id="load">—</span><span class="unit">kW</span></div></div></div>
+</div></section>
+<div class="chart-wrap"><div class="bars"></div><span class="chart-label">24h</span></div>
+<div class="day">
+<div class="day-item"><span class="day-head"><i class="day-dot d-grid"></i><span class="day-label" data-i18n="dayGrid">GRID</span></span><b class="day-value" id="day-grid">—</b></div>
+<div class="day-item"><span class="day-head"><i class="day-dot d-outage"></i><span class="day-label" data-i18n="dayOutage">NO GRID</span></span><b class="day-value" id="day-outage">—</b></div>
+<div class="day-item"><span class="day-head"><i class="day-dot d-charging"></i><span class="day-label" data-i18n="dayCharging">CHARGING</span></span><b class="day-value" id="day-charging">—</b></div>
+<div class="day-item"><span class="day-head"><i class="day-dot d-onbattery"></i><span class="day-label" data-i18n="dayOnBattery">ON BATTERY</span></span><b class="day-value" id="day-onbattery">—</b></div>
+</div>
+<div class="footer"><span id="connection" aria-live="polite">Connecting to Deye Cloud…</span><span class="demo-label"></span></div>
+</main>
+<script>
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s), widget=$('#widget');
+const browserDemo=!window.deye;
+let current={mode:'full',scale:1,capacity:16,data:null,lang:'en'},demoState=0;
+const i18n={
+  en:{
+    charging:'CHARGING',grid:'GRID ONLINE',discharging:'ON BATTERY',outage:'GRID OUTAGE',critical:'LOW BATTERY',
+    connecting:'CONNECTING',noConnection:'NO CONNECTION',dataStale:'DATA STALE',gridOn:'GRID ON',noGrid:'NO GRID',
+    batteryLabel:'BATTERY',gridLabel:'GRID',homeLabel:'HOME',
+    flowIn:'Charging',flowOut:'Discharging',flowIdle:'Battery idle',
+    historyEmpty:'No history yet',noData:'No data',
+    chartTitle:'Consumption over the last 24 hours.',
+    todayLabel:'TODAY',todayTitle:'Used by the house today, since midnight.',
+    dayGrid:'GRID',dayOutage:'NO GRID',dayCharging:'CHARGING',dayOnBattery:'ON BATTERY',
+    dayTitle:'Today, since midnight. Times are approximate.',
+    dayGap:ms=>`No data for ${ms}.`,
+    barAt:time=>time,
+    deyeCloud:'DEYE CLOUD',demo:'DEMO',
+    energyTitle:'Roughly how much is left in the battery',forTime:'for',
+    connectingMsg:'Connecting to Deye Cloud…',staleMsg:'Last inverter data is stale',demoMsg:'Demo data',
+    inverterData:'Updated',
+    pin:'Pin in place',unpin:'Unpin',mute:'Mute alerts',unmute:'Turn alerts on'
+  },
+  ru:{
+    charging:'ЗАРЯДКА',grid:'ЕСТЬ СЕТЬ',discharging:'ОТ БАТАРЕИ',outage:'НЕТ СЕТИ',critical:'НИЗКИЙ ЗАРЯД',
+    connecting:'СОЕДИНЕНИЕ',noConnection:'НЕТ СВЯЗИ',dataStale:'ДАННЫЕ УСТАРЕЛИ',gridOn:'ЕСТЬ СЕТЬ',noGrid:'НЕТ СЕТИ',
+    batteryLabel:'БАТАРЕЯ',gridLabel:'СЕТЬ',homeLabel:'ДОМ',
+    flowIn:'Заряд',flowOut:'Разряд',flowIdle:'Батарея в покое',
+    historyEmpty:'Истории пока нет',noData:'Нет данных',
+    chartTitle:'Потребление за последние 24 часа.',
+    todayLabel:'ЗА СЕГОДНЯ',todayTitle:'Потреблено домом за сегодня, с полуночи.',
+    dayGrid:'СЕТЬ',dayOutage:'БЕЗ СЕТИ',dayCharging:'ЗАРЯД',dayOnBattery:'ОТ БАТАРЕИ',
+    dayTitle:'За сегодня, с полуночи. Время приблизительное.',
+    dayGap:ms=>`Нет данных за ${ms}.`,
+    barAt:time=>time,
+    deyeCloud:'DEYE CLOUD',demo:'ДЕМО',
+    energyTitle:'Примерно столько осталось в батарее',forTime:'уже',
+    connectingMsg:'Соединение с Deye Cloud…',staleMsg:'Последние данные инвертора устарели',demoMsg:'Демонстрационные данные',
+    inverterData:'Обновлено',
+    pin:'Закрепить',unpin:'Открепить',mute:'Выключить звук',unmute:'Включить звук'
+  },
+  uk:{
+    charging:'ЗАРЯДКА',grid:'Є МЕРЕЖА',discharging:'ВІД БАТАРЕЇ',outage:'НЕМАЄ МЕРЕЖІ',critical:'НИЗЬКИЙ ЗАРЯД',
+    connecting:'З\'ЄДНАННЯ',noConnection:'НЕМАЄ ЗВ\'ЯЗКУ',dataStale:'ДАНІ ЗАСТАРІЛИ',gridOn:'Є МЕРЕЖА',noGrid:'НЕМАЄ МЕРЕЖІ',
+    batteryLabel:'БАТАРЕЯ',gridLabel:'МЕРЕЖА',homeLabel:'ДІМ',
+    flowIn:'Заряд',flowOut:'Розряд',flowIdle:'Батарея у спокої',
+    historyEmpty:'Історії поки немає',noData:'Немає даних',
+    chartTitle:'Споживання за останні 24 години.',
+    todayLabel:'ЗА СЬОГОДНІ',todayTitle:'Спожито домом за сьогодні, з півночі.',
+    dayGrid:'МЕРЕЖА',dayOutage:'БЕЗ МЕРЕЖІ',dayCharging:'ЗАРЯД',dayOnBattery:'ВІД БАТАРЕЇ',
+    dayTitle:'За сьогодні, з півночі. Час приблизний.',
+    dayGap:ms=>`Немає даних за ${ms}.`,
+    barAt:time=>time,
+    deyeCloud:'DEYE CLOUD',demo:'ДЕМО',
+    energyTitle:'Приблизно стільки лишилось у батареї',forTime:'вже',
+    connectingMsg:'З\'єднання з Deye Cloud…',staleMsg:'Останні дані інвертора застаріли',demoMsg:'Демонстраційні дані',
+    inverterData:'Оновлено',
+    pin:'Закріпити',unpin:'Відкріпити',mute:'Вимкнути звук',unmute:'Увімкнути звук'
+  }
+};
+function t(key){return i18n[current.lang]?.[key]||i18n.en[key]||key;}
+function text(sel,value){$$(sel).forEach(e=>e.textContent=value)}
+function clock(){const d=new Date();const loc=locale();text('.time',d.toLocaleTimeString(loc,{hour:'2-digit',minute:'2-digit',hour12:false}));text('.date',d.toLocaleDateString(loc,{weekday:'short',month:'short',day:'numeric'}));}
+// How long the current state has held, counted from the moment the main process saw it change -
+// the renderer must not time this itself, since the window can be hidden, reloaded or showing a
+// snapshot that arrived minutes ago. Empty while the state is unknown: .since:empty collapses it.
+function sinceText(){
+  const d=current.data, known=d&&!current.error&&!d.stale&&Number.isFinite(current.stateSince);
+  if(!known)return '';
+  const sec=Math.max(0,Math.floor((Date.now()-current.stateSince)/1000)),h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),ss=sec%60;
+  const pad=n=>String(n).padStart(2,'0');
+  return `${t('forTime')} ${h?`${h}:${pad(m)}:${pad(ss)}`:`${m}:${pad(ss)}`}`;
+}
+function tick(){clock();text('.since',sinceText());}
+tick();setInterval(tick,1000);
+// A 22.5 min bin holds several polls, so height is the AVERAGE load while colour is the WORST
+// state in the bin. Averaging a state is meaningless, and a ten minute outage inside a bin has to
+// stay visible instead of dissolving into its neighbours. Unknown names never outrank a known one,
+// so records written before the state was stored fall through to 'unknown' rather than mis-colour.
+const SEVERITY=['grid','charging','discharging','outage','critical'];
+function worstState(states){let worst=null;for(const s of states)if(SEVERITY.indexOf(s)>SEVERITY.indexOf(worst))worst=s;return worst;}
+// Synthetic day for DEMO and the browser preview: every bar colour plus one gap, in one glance.
+function demoBars(){return Array.from({length:64},(_,i)=>i>=20&&i<23?null:({
+  v:+(.25+Math.abs(Math.sin(i*.79))*.7*(1+.3*Math.sin(i*.4))).toFixed(2),
+  s:i<26?'grid':i<33?'charging':i<40?'outage':i<45?'critical':i<52?'discharging':'grid'}));}
+// The language currently in force, as a locale tag. A helper rather than a local, because the chart
+// formats times too and sits outside render().
+function locale(){return current.lang==='en'?'en-US':current.lang==='ru'?'ru-RU':'uk-UA';}
+// A duration as h:mm. Durations here are hours long and accurate to about five minutes, so seconds
+// would be false precision; a bare "0:07" reads better than "7 min" next to "11:36".
+function hhmm(ms){const m=Math.max(0,Math.round(ms/60000));return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;}
+// Everything the house used today. This is the inverter's own day counter, not an integral over
+// five-minute samples, so unlike the durations beside the chart it is exact. It arrives in the
+// reading the widget fetches anyway, which is why it costs nothing to show.
+function dayTotal(energy){
+  const kwh=energy&&Number.isFinite(energy.consumed)?energy.consumed:null;
+  // One decimal: the counter itself reports tenths, and a house total is read as "about ten", not
+  // to the watt-hour.
+  text('#today-kwh',kwh===null?'—':kwh.toFixed(1));
+  $('.today-total').title=t('todayTitle');
+}
+// The four figures for the calendar day. Nothing is computed here - the main process did that from
+// the cloud's own series - so the page cannot disagree with it.
+function dayRow(today){
+  const known=today&&Number.isFinite(today.withGrid);
+  const cells={grid:today?.withGrid,outage:today?.withoutGrid,charging:today?.charging,onbattery:today?.onBattery};
+  for(const [name,value] of Object.entries(cells))
+    text('#day-'+name,known&&Number.isFinite(value)?hhmm(value):'—');
+  // The caveats live in the tooltip rather than on the card: the figures are read at a glance, and
+  // the two things worth knowing - what the parts mean and what is missing - do not fit beside them.
+  const gap=known&&today.unknown>60000?' '+t('dayGap')(hhmm(today.unknown)):'';
+  $('.day').title=t('dayTitle')+gap;
+}
+function chart(history,demo){const el=$('.bars');el.replaceChildren();
+  const now=Date.now(),bins=Array.from({length:64},()=>[]),slot=86400000/64;
+  for(const p of history||[]){const i=Math.floor((p.t-(now-86400000))/86400000*64);if(i>=0&&i<64)bins[i].push(p)}
+  let cells=bins.map(b=>b.length?{v:b.reduce((a,p)=>a+p.v,0)/b.length,s:worstState(b.map(p=>p.s))}:null);
+  if(demo)cells=demoBars();
+  $('.chart-wrap').title=t('chartTitle');
+  if(!cells.some(c=>c)){const e=document.createElement('div');e.className='empty-chart';e.textContent=t('historyEmpty');el.append(e);text('.chart-label','24h');return}
+  // The label carries the scale: without it the bar heights are not readable as numbers.
+  const max=Math.max(.1,...cells.filter(c=>c).map(c=>c.v));text('.chart-label',`${max.toFixed(1)} kW · 24h`);
+  cells.forEach((c,i)=>{const b=document.createElement('i');
+    b.className='bar s-'+(!c?'none':c.s||'unknown');
+    b.style.height=(c?Math.max(3,c.v/max*48):2)+'px';
+    // Each bar covers about 22 minutes, so it gets the middle of its own slot rather than the time
+    // of any one reading inside it - that is the time the bar actually sits at on the axis. Named
+    // "around" because claiming a minute would be claiming more than a bar can mean.
+    // An empty bar is labelled too: knowing WHEN the cloud has no readings is worth as much as
+    // knowing that it does not.
+    const at=t('barAt')(new Date(now-86400000+(i+.5)*slot).toLocaleTimeString(locale(),{hour:'2-digit',minute:'2-digit',hour12:false}));
+    b.title=c?`${at} · ${c.v.toFixed(2)} kW${c.s?` · ${t(c.s)}`:''}`:`${at} · ${t('noData')}`;
+    el.append(b)});
+}
+function renderStatus(s,d,stale,offline,state){
+  const label=offline?(s.loading?t('connecting'):t('noConnection')):stale?t('dataStale'):t(state);
+  text('.status-title',label);text('.status-name',label);
+  text('.since',sinceText());
+  text('.status-sub',d?(d.grid?t('gridOn'):t('noGrid')):t('deyeCloud'));
+  $('#status-symbol').setAttribute('href',state==='charging'?'#i-bolt':'#i-power');
+}
+function renderGauge(s,d){
+  text('#soc',d?Math.round(d.soc):'—');
+  $('.soc').classList.toggle('wide',String(d?Math.round(d.soc):'').length>2);
+  text('#energy',d?(d.soc*(s.capacity||16)/100).toFixed(1):'—');
+  text('#capacity',` / ${s.capacity||16} kWh`);
+  $('.energy').title=t('energyTitle');
+  $('.gauge').setAttribute('aria-valuenow',d?.soc||0);
+  widget.style.setProperty('--progress',`${d?.soc||0}%`);
+  widget.style.setProperty('--p1',`${(d?.soc||0)*.36}%`);
+  widget.style.setProperty('--p2',`${(d?.soc||0)*.78}%`);
+  const compact=s.mode==='compact',diam=compact?139:282,inset=compact?6:12,stroke=compact?8:14,
+        r=diam/2-inset-stroke/2,angle=(d?.soc||0)/100*Math.PI*2;
+  $('.cap.end').style.left=`${diam/2+r*Math.sin(angle)-stroke/2}px`;
+  $('.cap.end').style.top=`${diam/2-r*Math.cos(angle)-stroke/2}px`;
+  $$('.cap').forEach(e=>e.style.display=d&&d.soc>0?'block':'none');
+}
+function renderMetrics(d){
+  text('#battery',d?d.battery.toFixed(2):'—');
+  text('#grid',d?d.gridPower.toFixed(2):'—');
+  text('#load',d?d.load.toFixed(2):'—');
+  // Two separate questions, so two separate glyphs: the status card answers "which state are we in",
+  // the battery row answers "which way is the battery flowing". They used to share one expression,
+  // which meant the hint duplicated the card and added nothing.
+  const flow=d?.flow||'idle';
+  $('#power-symbol').setAttribute('href','#i-flow-'+flow);
+  const hint=$('.power-hint'),flowText=t('flow'+flow[0].toUpperCase()+flow.slice(1));
+  hint.title=flowText;hint.setAttribute('aria-label',flowText);
+}
+function renderToolbar(s){
+  // The lock is owned by the main process, so the button only reflects it. aria-pressed is both the
+  // accessible state and the CSS hook, so the two can never disagree.
+  const pin=$('#pin');
+  pin.setAttribute('aria-pressed',String(!!s.pinned));
+  pin.title=t(s.pinned?'unpin':'pin');pin.setAttribute('aria-label',pin.title);
+  widget.classList.toggle('pinned',!!s.pinned);
+  // Same arrangement as the pin: the main process owns the setting and the page only mirrors it,
+  // so the menu item and the button can never show different things.
+  const mute=$('#mute');
+  mute.setAttribute('aria-pressed',String(!!s.mute));
+  mute.title=t(s.mute?'unmute':'mute');mute.setAttribute('aria-label',mute.title);
+  $('#mute-symbol').setAttribute('href',s.mute?'#i-sound-off':'#i-sound');
+}
+function renderFooter(s,d,stale){
+  const c=$('#connection');
+  c.className=s.error?'error':stale?'stale-mark':'';
+  c.textContent=s.error||(s.loading?t('connectingMsg'):stale?t('staleMsg'):s.demo?t('demoMsg')
+    :`${t('inverterData')} ${new Date(s.updatedAt||Date.now()).toLocaleTimeString(locale(),{hour:'2-digit',minute:'2-digit',hour12:false})}`);
+  c.title=s.error||(d?.sourceTime?`${t('inverterData')}: ${new Date(d.sourceTime).toLocaleString(locale())}`:'');
+}
+function render(s){
+  current=s;
+  widget.className=s.mode==='compact'?'compact':'';
+  widget.style.transform=`scale(${s.scale||1})`;
+  text('.model',s.model||'SUN-8K');
+  text('.demo-label',s.demo?t('demo'):'');
+  const d=s.data,stale=!!d?.stale,offline=!!s.error||!d;
+  widget.classList.toggle('offline',offline||stale);
+  const state=d?.state||'grid';
+  widget.classList.add(state);
+  renderStatus(s,d,stale,offline,state);
+  renderGauge(s,d);
+  renderMetrics(d);
+  $$('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
+  renderToolbar(s);
+  renderFooter(s,d,stale);
+  chart(s.history,s.demo);
+  dayTotal(d?.dayEnergy);
+  dayRow(s.demo?{withGrid:11*3600000,withoutGrid:2.5*3600000,charging:1.5*3600000,onBattery:.5*3600000,unknown:0}:s.today);
+}
+function action(name){if(window.deye)window.deye.action(name);else if(name==='toggleMode'){current.mode=current.mode==='full'?'compact':'full';render(current)}else if(name==='menu'){demoState=(demoState+1)%PREVIEW_STATES.length;preview(demoState)} }
+$('#resize').onclick=()=>action('toggleMode');$('#menu').onclick=()=>action('menu');$('#hide').onclick=()=>action('hide');
+$('#pin').onclick=()=>action('togglePin');$('#mute').onclick=()=>action('toggleMute');
+// Hand-rolled window dragging; see the dragStart comment in main.cjs for why the drag region is gone.
+// The pin is checked here as well as in main.cjs, not instead of it: this stops the drag cursor and
+// the pointless IPC, while the main process stays the one place that actually decides.
+widget.addEventListener('mousedown',e=>{if(e.button===0&&!current.pinned&&!e.target.closest('button'))action('drag-start')});
+document.addEventListener('mouseup',()=>action('drag-end'));
+widget.addEventListener('dblclick',e=>{if(!e.target.closest('button'))action('toggleMode')});widget.addEventListener('contextmenu',e=>{e.preventDefault();action('menu')});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!current.pinned)action('hide');if(e.key==='F5')action('refresh')});
+// One entry per state the palette defines, plus a trailing null for "no connection".
+// The readings match the thresholds in core.cjs so the preview cannot show an impossible pairing.
+const PREVIEW_STATES=[
+  {soc:92,battery:0,grid:true,gridPower:.6,load:.59,state:'grid',flow:'idle'},
+  {soc:80,battery:1.25,grid:true,gridPower:.2,load:1.45,state:'discharging',flow:'out'},
+  {soc:92,battery:-3.10,grid:true,gridPower:3.75,load:.49,state:'charging',flow:'in'},
+  {soc:68,battery:1.25,grid:false,gridPower:0,load:1.25,state:'outage',flow:'out'},
+  {soc:22,battery:1.25,grid:false,gridPower:0,load:1.25,state:'critical',flow:'out'},
+  null];
+function preview(state=0){const data=PREVIEW_STATES[state];render({...current,demo:true,data:data||PREVIEW_STATES[0],loading:false,error:data?null:t('noConnection')});}
+if(window.deye)window.deye.subscribe(render);else{document.body.classList.add('preview');const params=new URLSearchParams(location.search);current.mode=params.get('mode')==='compact'?'compact':'full';preview(Number(params.get('state'))||0);}
+</script></body></html>

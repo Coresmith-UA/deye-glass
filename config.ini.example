@@ -1,0 +1,28 @@
+[Deye]
+# Bearer token из Deye Cloud (получить через Charles Proxy)
+token = YOUR_BEARER_TOKEN_HERE
+
+# Station ID вашего инвертора
+station_id = YOUR_STATION_ID_HERE
+
+# Base URL API (обычно не меняется)
+base_url = https://eu1.deyecloud.com
+
+[Widget]
+# Интервал обновления данных в секундах
+# Рекомендуется 30-60 (не чаще, чтобы не перегружать API)
+refresh_interval = 30
+
+[Sounds]
+# Путь к звуковым файлам (относительные пути от папки виджета)
+# Поддерживаются .wav файлы (winsound встроен в Windows Python)
+grid_lost = sounds/grid_lost.wav
+grid_back = sounds/grid_back.wav
+
+[Window]
+# Настройки окна
+always_on_top = false
+transparency = 0.95
+remember_position = true
+last_x = 100
+last_y = 100

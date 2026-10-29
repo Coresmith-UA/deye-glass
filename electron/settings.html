@@ -1,0 +1,232 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Deye Glass</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px;background:#101820;color:#dde5ef;font:14px/1.45 "Segoe UI",system-ui,sans-serif;user-select:none}
+h1{margin:0 0 4px;font-size:19px;font-weight:600;color:#eef3f9}
+.sub{margin:0 0 14px;color:#8d9bad;font-size:12.5px}
+.field{margin-bottom:12px}
+label{display:block;margin-bottom:5px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:#93a2b5}
+input:not([type=checkbox]){width:100%;padding:9px 11px;border:1px solid #2a3744;border-radius:7px;background:#17222d;color:#e6edf6;
+  font:14px "Segoe UI",system-ui,sans-serif;user-select:text}
+input:focus{outline:none;border-color:#00e798}
+input::placeholder{color:#64748b}
+.hint{margin-top:4px;font-size:11.5px;color:#7b8a9c}
+.row{display:flex;gap:12px}
+.row .field{flex:1}
+.actions{display:flex;gap:10px;align-items:center;margin-top:18px}
+/* A path plus its two actions on one line: the file name is the long part, so it takes the slack
+   and the buttons keep a fixed width instead of jumping as the path changes. */
+.path{display:flex;gap:7px}
+.path button{padding:9px 11px;flex:none}
+.path button.play{width:38px;font-size:12px}
+hr{border:none;border-top:1px solid #243140;margin:16px 0 14px}
+.check{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.check input{width:16px;height:16px;accent-color:#00e798}
+.check label{margin:0;text-transform:none;font-size:13px;letter-spacing:0;color:#c6d2e0}
+button{padding:9px 16px;border:1px solid #2f3e4d;border-radius:7px;background:#1b2834;color:#dde5ef;
+  font:14px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+button:hover:enabled{background:#223240}
+button:disabled{opacity:.55;cursor:default}
+button.primary{border-color:#00e798;background:#00e798;color:#06221a;font-weight:600}
+button.primary:hover:enabled{background:#2bf0ab}
+/* One status line for both buttons: a form this small does not need two places to look for an
+   answer. Colour is backed by the ✓/! prefix, so the result is not carried by colour alone. */
+/* Recessive on purpose: it is a signature, not a control. Centred so it reads as the end of the
+   window rather than as a label belonging to the last field. */
+.credit{margin:16px 0 0;text-align:center;font-size:11.5px;color:#5d6b7c;letter-spacing:.3px}
+#status{margin-left:auto;text-align:right;font-size:12.5px;min-height:18px;color:#8d9bad}
+#status.ok{color:#00e798}
+#status.bad{color:#ff6b6b}
+</style></head>
+<body>
+<h1 id="t-title">Settings</h1>
+<p class="sub" id="t-sub">Credentials are stored in config.ini next to the widget.</p>
+
+<div class="row">
+  <div class="field">
+    <label for="app_id" id="t-appid">App ID</label>
+    <input id="app_id" autocomplete="off" spellcheck="false" inputmode="numeric">
+  </div>
+  <div class="field">
+    <label for="app_secret" id="t-secret">App Secret</label>
+    <input id="app_secret" type="password" autocomplete="off" spellcheck="false">
+  </div>
+</div>
+<div class="hint" id="t-app-hint">From developer.deyecloud.com - create an app there.</div>
+<div class="row">
+  <div class="field">
+    <label for="email" id="t-email">Account email</label>
+    <input id="email" type="email" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label for="password" id="t-password">Account password</label>
+    <input id="password" type="password" autocomplete="off" spellcheck="false">
+  </div>
+</div>
+<div class="hint" id="t-account-hint">The Deye Cloud account you log into in the app.</div>
+<div class="field">
+  <label for="station_id" id="t-station">Station ID</label>
+  <input id="station_id" autocomplete="off" spellcheck="false" inputmode="numeric">
+</div>
+<div class="field">
+  <label for="base_url" id="t-server">Server</label>
+  <input id="base_url" autocomplete="off" spellcheck="false" placeholder="https://eu1-developer.deyecloud.com/v1.0">
+</div>
+<div class="row">
+  <div class="field">
+    <label for="refresh_interval" id="t-interval">Refresh</label>
+    <input id="refresh_interval" inputmode="numeric">
+    <div class="hint" id="t-interval-hint">Seconds, no faster than 15.</div>
+  </div>
+  <div class="field">
+    <label for="battery_capacity_kwh" id="t-capacity">Battery capacity</label>
+    <input id="battery_capacity_kwh" inputmode="decimal">
+    <div class="hint" id="t-capacity-hint">kWh, used for the kWh estimate.</div>
+  </div>
+</div>
+<div class="field">
+  <label for="model" id="t-model">Model</label>
+  <input id="model" autocomplete="off" spellcheck="false">
+</div>
+<hr>
+<div class="check">
+  <input id="sound_on" type="checkbox" checked>
+  <label for="sound_on" id="t-sound-on">Play a sound when the grid goes down or comes back</label>
+</div>
+<div class="field">
+  <label for="grid_lost" id="t-lost">Grid lost</label>
+  <div class="path">
+    <input id="grid_lost" autocomplete="off" spellcheck="false">
+    <button id="browse_lost" data-for="grid_lost">Browse…</button>
+    <button class="play" id="play_lost" data-for="grid_lost" title="Play" aria-label="Play">▶</button>
+  </div>
+</div>
+<div class="field">
+  <label for="grid_back" id="t-back">Grid back</label>
+  <div class="path">
+    <input id="grid_back" autocomplete="off" spellcheck="false">
+    <button id="browse_back" data-for="grid_back">Browse…</button>
+    <button class="play" id="play_back" data-for="grid_back" title="Play" aria-label="Play">▶</button>
+  </div>
+  <div class="hint" id="t-sound-hint">PCM WAV only. Relative to config.ini; empty means the bundled file.</div>
+</div>
+<div class="actions">
+  <button id="test">Test connection</button>
+  <button id="save" class="primary">Save</button>
+  <span id="status" role="status" aria-live="polite"></span>
+</div>
+<!-- Not translated and not a status line: a name and a version number read the same in all three
+     languages, and the status area above must stay free for the answer to Test/Save. -->
+<p class="credit">Deye Glass v2 &middot; Developed by Coresmith</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const FIELDS=['app_id','app_secret','email','password','station_id','base_url','refresh_interval','battery_capacity_kwh','model','grid_lost','grid_back'];
+// Own dictionary rather than the widget's: none of these strings appear there, so sharing one
+// dictionary across two pages would only couple them.
+const L={
+ en:{title:'Settings',sub:'Credentials are stored in config.ini next to the widget.',appid:'App ID',secret:'App Secret',
+  appHint:'From developer.deyecloud.com - create an app there.',
+  email:'Account email',password:'Account password',
+  accountHint:'The Deye Cloud account you log into in the app.',
+  secretSaved:'saved — leave empty to keep it',
+  station:'Station ID',server:'Server',interval:'Longest wait',
+  intervalHint:'Seconds. Polling follows the inverter’s own ~5 min upload; this is only the cap.',
+  capacity:'Battery capacity',capacityHint:'kWh, used for the kWh estimate.',model:'Model',
+  test:'Test connection',save:'Save',testing:'Checking…',saving:'Saving…',
+  ok:soc=>`✓ Connected, battery ${soc}%`,saved:'✓ Saved',
+  soundOn:'Play a sound when the grid goes down or comes back',lost:'Grid lost',back:'Grid back',
+  soundHint:'PCM WAV only. Relative to config.ini; empty means the bundled file.',
+  browse:'Browse…',playing:'▶ Playing'},
+ ru:{title:'Настройки',sub:'Данные хранятся в config.ini рядом с виджетом.',appid:'App ID',secret:'App Secret',
+  appHint:'Из developer.deyecloud.com — создайте там приложение.',
+  email:'Email аккаунта',password:'Пароль аккаунта',
+  accountHint:'Аккаунт Deye Cloud, в который вы входите в приложении.',
+  secretSaved:'сохранён — оставьте пустым, чтобы не менять',
+  station:'ID станции',server:'Сервер',interval:'Предел ожидания',
+  intervalHint:'Секунды. Опрос идёт в такт выгрузке инвертора (~5 мин); это лишь верхний предел.',
+  capacity:'Ёмкость батареи',capacityHint:'кВт·ч, для оценки запаса.',model:'Модель',
+  test:'Проверить связь',save:'Сохранить',testing:'Проверяю…',saving:'Сохраняю…',
+  ok:soc=>`✓ Связь есть, заряд ${soc}%`,saved:'✓ Сохранено',
+  soundOn:'Звук при пропадании и возврате сети',lost:'Сеть пропала',back:'Сеть вернулась',
+  soundHint:'Только WAV (PCM). Путь от config.ini; пусто — файл из комплекта.',
+  browse:'Обзор…',playing:'▶ Играет'},
+ uk:{title:'Налаштування',sub:'Дані зберігаються у config.ini поруч із віджетом.',appid:'App ID',secret:'App Secret',
+  appHint:'З developer.deyecloud.com — створіть там застосунок.',
+  email:'Email акаунта',password:'Пароль акаунта',
+  accountHint:'Акаунт Deye Cloud, у який ви входите в застосунку.',
+  secretSaved:'збережено — залиште порожнім, щоб не змінювати',
+  station:'ID станції',server:'Сервер',interval:'Межа очікування',
+  intervalHint:'Секунди. Опитування йде в такт вигрузці інвертора (~5 хв); це лише верхня межа.',
+  capacity:'Ємність батареї',capacityHint:'кВт·год, для оцінки запасу.',model:'Модель',
+  test:'Перевірити зв’язок',save:'Зберегти',testing:'Перевіряю…',saving:'Зберігаю…',
+  ok:soc=>`✓ Зв’язок є, заряд ${soc}%`,saved:'✓ Збережено',
+  soundOn:'Звук при зникненні та поверненні мережі',lost:'Мережа зникла',back:'Мережа повернулася',
+  soundHint:'Лише WAV (PCM). Шлях від config.ini; порожньо — файл із комплекту.',
+  browse:'Огляд…',playing:'▶ Грає'}};
+let d=L.en;
+function status(text,kind){const el=$('status');el.textContent=text||'';el.className=kind||''}
+// Mute travels with the form so saving applies it, same as every other setting here.
+function form(){const out={mute:!$('sound_on').checked};for(const f of FIELDS)out[f]=$(f).value;return out}
+function busy(on){$('test').disabled=on;$('save').disabled=on}
+function translate(lang,hasSecret,hasPassword){
+ d=L[lang]||L.en;document.documentElement.lang=lang||'en';
+ $('t-title').textContent=d.title;$('t-sub').textContent=d.sub;
+ $('t-appid').textContent=d.appid;$('t-secret').textContent=d.secret;
+ $('t-app-hint').textContent=d.appHint;
+ $('t-email').textContent=d.email;$('t-password').textContent=d.password;
+ $('t-account-hint').textContent=d.accountHint;
+ $('t-station').textContent=d.station;$('t-server').textContent=d.server;
+ $('t-interval').textContent=d.interval;$('t-interval-hint').textContent=d.intervalHint;
+ $('t-capacity').textContent=d.capacity;$('t-capacity-hint').textContent=d.capacityHint;
+ $('t-model').textContent=d.model;$('test').textContent=d.test;$('save').textContent=d.save;
+ $('t-sound-on').textContent=d.soundOn;$('t-lost').textContent=d.lost;$('t-back').textContent=d.back;
+ $('t-sound-hint').textContent=d.soundHint;
+ for(const id of ['browse_lost','browse_back'])$(id).textContent=d.browse;
+ // A stored secret is never sent here, so the placeholder is the only thing that can say it exists.
+ $('app_secret').placeholder=hasSecret?d.secretSaved:'';
+ $('password').placeholder=hasPassword?d.secretSaved:'';
+}
+// The two secrets are the fields load() must never fill: the main process does not send them, and
+// writing anything into them would turn "leave empty to keep" into an overwrite.
+const SECRET_FIELDS=['app_secret','password'];
+async function load(){
+ const s=await window.setup.load();if(!s)return;
+ translate(s.lang,s.hasSecret,s.hasPassword);
+ for(const f of FIELDS)if(!SECRET_FIELDS.includes(f))$(f).value=s[f]??'';
+ $('sound_on').checked=!s.mute;
+}
+// The toolbar button and the menu can change this while the window is open.
+if(window.setup.onMute)window.setup.onMute(value=>{$('sound_on').checked=!value});
+for(const id of ['browse_lost','browse_back'])$(id).addEventListener('click',async()=>{
+ const r=await window.setup.browse();if(!r||!r.path)return;
+ $($(id).dataset.for).value=r.path;
+ // A chosen file that cannot be played is reported now, not swallowed - but it is still filled in,
+ // so the path is visible and can be corrected rather than silently discarded.
+ r.error?status('! '+r.error,'bad'):status('');
+});
+for(const id of ['play_lost','play_back'])$(id).addEventListener('click',async()=>{
+ status(d.playing);
+ const r=await window.setup.play($($(id).dataset.for).value);
+ r.ok?status(''):status('! '+r.error,'bad');
+});
+$('test').addEventListener('click',async()=>{
+ busy(true);status(d.testing);
+ const r=await window.setup.test(form());busy(false);
+ r.ok?status(d.ok(Math.round(r.soc)),'ok'):status('! '+r.error,'bad');
+});
+$('save').addEventListener('click',async()=>{
+ busy(true);status(d.saving);
+ const r=await window.setup.save(form());busy(false);
+ if(!r.ok){status('! '+r.error,'bad');return}
+ // Clear the secret fields after a successful save: leaving a typed password on screen would
+ // contradict the rule that the page never holds one, and the placeholder now says it is stored.
+ for(const f of SECRET_FIELDS){$(f).value='';$(f).placeholder=d.secretSaved}
+ status(d.saved,'ok');
+});
+load();
+</script>
+</body></html>
