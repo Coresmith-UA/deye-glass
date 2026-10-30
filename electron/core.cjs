@@ -292,6 +292,17 @@ function stateClock(previous, {state, now, maxGap = 900000}) {
   const watched = same && previous.seenAt && now - previous.seenAt <= maxGap;
   return {state, since: watched ? previous.since : now, seenAt: now};
 }
+// Scan history backwards to find the server-side timestamp when the current state began continuously.
+// Used after loading cloud history to correct clock.since when the machine was off during a state
+// change: without this, outage timers restart from boot rather than from when the outage actually began.
+// Returns null if history is empty, state is falsy, or the most recent point is not in that state.
+function inferStateSince(points, state) {
+  if (!points || !points.length || !state) return null;
+  if (points[points.length - 1].state !== state) return null;
+  let i = points.length - 1;
+  while (i > 0 && points[i - 1].state === state) i--;
+  return points[i].t;
+}
 // 3x5 pixel digits, drawn at double size. No font and no asset: the tray icon is generated, and a
 // font would have to be shipped, found by name, and would still not be legible at this size.
 const TRAY_DIGITS=['111101101101111','010010010010010','111001111100111','111001111001111',
@@ -453,7 +464,7 @@ module.exports={
   // Pure utilities
   parseIni,writeIni,wavProblem,numeric,sha256hex,startOfDay,
   // State machine
-  deriveState,stateClock,nextDelay,learnPeriod,track,
+  deriveState,stateClock,inferStateSince,nextDelay,learnPeriod,track,
   // Normalisation
   normalizeDevice,normalizeHistory,
   // Tray

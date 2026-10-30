@@ -1,7 +1,7 @@
 'use strict';
 const {app,BrowserWindow,Tray,Menu,nativeImage,ipcMain,screen,nativeTheme,shell,dialog,safeStorage}=require('electron');
 const fs=require('node:fs'),path=require('node:path');
-const {parseIni,writeIni,wavProblem,fetchStation,fetchHistory,dayStats,startOfDay,publicError,nextDelay,track,stateClock,trayPixels,newSession,resetSession,DEMO,UPLOAD_PERIOD,MIN_INTERVAL,DEV_BASE}=require('./core.cjs');
+const {parseIni,writeIni,wavProblem,fetchStation,fetchHistory,dayStats,startOfDay,publicError,nextDelay,track,stateClock,inferStateSince,trayPixels,newSession,resetSession,DEMO,UPLOAD_PERIOD,MIN_INTERVAL,DEV_BASE}=require('./core.cjs');
 const SOUND_DEFAULT={grid_lost:'sounds/grid_lost.wav',grid_back:'sounds/grid_back.wav'};
 // Secrets at rest. The two values that can reach the account - the app secret and the account
 // password - are never written to disk in the clear; safeStorage is Windows DPAPI underneath, so the
@@ -147,6 +147,13 @@ async function refreshHistory(){
   // Computed over today only, while the series fetched above spans a full day - the chart wants 24
   // hours, the figures want "since midnight", and one request serves both.
   today=dayStats(points,{from:startOfDay(now),to:now});
+  // Correct clock.since using server history: if the machine was off during a state change (e.g. a
+  // power outage started while the PC was off), stateClock restarted from boot. History knows the
+  // true start. Only update if the server tells us the state started earlier than we thought.
+  if(clock&&points.length){
+    const inferred=inferStateSince(points,clock.state);
+    if(inferred&&inferred<clock.since){clock={...clock,since:inferred};prefs.clock=clock;persist();}
+  }
   broadcast();
 }
 // Must match #widget in index.html exactly: the window is the card, so a mismatch shows as empty

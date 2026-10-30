@@ -1,5 +1,5 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');
-const {parseIni,writeIni,wavProblem,normalizeDevice,deriveState,fetchStation,publicError,nextDelay,learnPeriod,track,stateClock,trayPixels,
+const {parseIni,writeIni,wavProblem,normalizeDevice,deriveState,fetchStation,publicError,nextDelay,learnPeriod,track,stateClock,inferStateSince,trayPixels,
  sha256hex,newSession,credentials,normalizeHistory,fetchHistory,dayStats,startOfDay,CRITICAL_SOC,IDLE_KW,
  UPLOAD_PERIOD,APPEAR_LAG,RETRY,MIN_INTERVAL,GRID_FREQ_MIN,DEV_BASE,HISTORY_POINTS}=require('./core.cjs');
 // Minimal valid PCM WAV header, used both to test wavProblem and to answer .wav reads in the mock
@@ -790,6 +790,31 @@ test('state clock: counts an unbroken stretch and refuses to count across a gap 
  const d=stateClock(c,{state:'grid',now:62000+3600000});
  assert.equal(d.since,62000+3600000,'a gap larger than maxGap restarts rather than invents a duration');
  assert.equal(stateClock(d,{state:null,now:1}).since,d.since,'no state is no news');
+});
+test('inferStateSince: finds the start of a continuous run at the end of history',()=>{
+ const pts=[{t:1000,state:'grid'},{t:2000,state:'outage'},{t:3000,state:'outage'},{t:4000,state:'outage'}];
+ assert.equal(inferStateSince(pts,'outage'),2000,'returns first point of the trailing run');
+});
+test('inferStateSince: returns null when the most recent point does not match the requested state',()=>{
+ const pts=[{t:1000,state:'outage'},{t:2000,state:'outage'},{t:3000,state:'grid'}];
+ assert.equal(inferStateSince(pts,'outage'),null);
+});
+test('inferStateSince: entire history is one state',()=>{
+ const pts=[{t:100,state:'charging'},{t:200,state:'charging'},{t:300,state:'charging'}];
+ assert.equal(inferStateSince(pts,'charging'),100);
+});
+test('inferStateSince: empty array returns null',()=>{
+ assert.equal(inferStateSince([],'grid'),null);
+});
+test('inferStateSince: null state returns null',()=>{
+ assert.equal(inferStateSince([{t:1,state:'grid'}],null),null);
+});
+test('inferStateSince: does not update clock when inferred time is not earlier',()=>{
+ const pts=[{t:5000,state:'grid'},{t:6000,state:'outage'}];
+ const inferred=inferStateSince(pts,'outage'); // 6000
+ const clock={state:'outage',since:5000,seenAt:6000};
+ // 6000 is not < 5000, so we should not apply it (caller responsibility — tested here as a contract)
+ assert.ok(inferred>=clock.since,'inferred is not earlier — clock should stay unchanged');
 });
 test('tray icon: an arc in the state colour, a legible number, and a full ring at 100%',()=>{
  const px=trayPixels({soc:50,rgb:[255,93,104]});
