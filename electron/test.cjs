@@ -910,6 +910,29 @@ test('sound: a grid change plays the matching file, the first reading is silent,
 });
 // Pinning must hold against every route the widget can be moved or removed by, and the main process
 // is the one that decides - the page can be stale or reloaded.
+test('stacking: startup, pinning and restart respect Always on Top independently',async()=>{
+ for(const pinned of [false,true])for(const top of [false,true]){
+  const state={mode:'full',scale:1,lang:'en',pinned,top};
+  const h=await desktop({state});
+  assert.equal(h.window.options.alwaysOnTop,top,`startup: pinned=${pinned}, top=${top}`);
+  h.send('menu');
+  assert.equal(h.menu().find(x=>x.label==='Always on Top').checked,top);
+  h.send('togglePin');
+  assert.equal(h.window.onTop,top,'changing the pin preserves stacking');
+  h.menu().find(x=>x.label==='Always on Top').click({checked:!top});
+  assert.equal(h.window.onTop,!top,'the top setting applies immediately');
+  const saved=JSON.parse(h.writes.filter(([p])=>p.endsWith('window.json')).at(-1)[1]);
+  const restarted=await desktop({state:saved});
+  assert.equal(restarted.window.options.alwaysOnTop,!top,'restart preserves the top setting');
+  assert.equal(restarted.window.options.movable,pinned,'restart preserves the changed pin');
+  restarted.window.emit('ready-to-show');
+  restarted.window.minimized=true;
+  restarted.window.emit('minimize');
+  restarted.watchdog()?.();
+  assert.equal(restarted.window.options.alwaysOnTop,!top);
+  assert.equal(restarted.window.onTop,undefined,'visibility recovery does not override stacking');
+ }
+});
 test('pinned: the widget cannot be dragged, hidden or closed, and the lock survives a restart',async()=>{
  const h=await desktop();const {window,send}=h;
  assert.equal(window.options.movable,true,'an unpinned widget is movable');

@@ -1,6 +1,6 @@
 {
   "name": "deye-glass-widget",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Deye glass desktop monitor",
   "author": "Coresmith",
   "main": "main.cjs",

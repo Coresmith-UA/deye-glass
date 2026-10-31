@@ -298,8 +298,7 @@ function makeMenu(fromTray){return Menu.buildFromTemplate([
     {label:'Русский',type:'radio',checked:prefs.lang==='ru',click:()=>{prefs.lang='ru';broadcast();persist()}},
     {label:'Українська',type:'radio',checked:prefs.lang==='uk',click:()=>{prefs.lang='uk';broadcast();persist()}}
   ]},
-  // Unchecking this while pinned stores the choice but cannot take effect yet: the pin needs the
-  // window on top to survive Win+D. It applies as soon as the widget is unpinned.
+  // This setting controls stacking immediately, independently of the pin.
   {label:'Always on Top',type:'checkbox',checked:!!prefs.top,click:i=>{prefs.top=i.checked;onTop();persist()}},
   // Also in the menu, not only on the toolbar: a pinned widget refuses to hide, so without a second
   // way out a user who pinned it and forgot the button would have no way to unpin it.
@@ -434,7 +433,7 @@ app.whenReady().then(async()=>{
   // Fully transparent window: the only visible surface is #widget, which does its own glass in CSS.
   // Windows backgroundMaterial:'acrylic' is deliberately NOT used - it fills the whole window rect
   // with an opaque grey material that sticks out around the card's rounded corners.
-  win=new BrowserWindow({width:Math.round(w*prefs.scale),height:Math.round(h*prefs.scale),frame:false,transparent:true,backgroundColor:'#00000000',resizable:false,maximizable:false,minimizable:!prefs.pinned,fullscreenable:false,skipTaskbar:true,alwaysOnTop:!!prefs.top||!!prefs.pinned,movable:!prefs.pinned,show:false,roundedCorners:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  win=new BrowserWindow({width:Math.round(w*prefs.scale),height:Math.round(h*prefs.scale),frame:false,transparent:true,backgroundColor:'#00000000',resizable:false,maximizable:false,minimizable:!prefs.pinned,fullscreenable:false,skipTaskbar:true,alwaysOnTop:!!prefs.top,movable:!prefs.pinned,show:false,roundedCorners:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   if(Number.isFinite(prefs.x)&&Number.isFinite(prefs.y)&&screen.getAllDisplays().some(d=>prefs.x>=d.workArea.x&&prefs.x<d.workArea.x+d.workArea.width-80&&prefs.y>=d.workArea.y&&prefs.y<d.workArea.y+d.workArea.height-40))win.setPosition(prefs.x,prefs.y);
   win.loadFile(path.join(__dirname,'index.html'));win.once('ready-to-show',()=>{win.show();watchVisible(prefs.pinned);});
   // While dragging, 'moved' fires on every 16 ms step; dragStop persists once at the end instead.
