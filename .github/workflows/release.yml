@@ -1,0 +1,38 @@
+name: Release Windows
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-windows
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install
+        working-directory: electron
+        run: npm install
+      - name: Test
+        working-directory: electron
+        run: npm test
+      - name: Build portable EXE
+        working-directory: electron
+        run: npm run dist -- --publish never
+      - name: Publish v2.2.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          @'
+          Fix: a pinned widget now respects Always on Top immediately after startup, including Windows autostart. With Always on Top off, other applications can cover it normally.
+
+          Validation: 87 automated tests passed. Portable Windows x64 EXE built by GitHub Actions.
+
+          Update: exit the widget, replace Deye-Glass.exe in its existing folder, and launch it again. Keep config.ini to preserve credentials.
+          '@ | Set-Content release-notes.md
+          gh release create v2.2.0 electron/dist/Deye-Glass.exe --target $env:GITHUB_SHA --title 'Deye Glass 2.2.0' --notes-file release-notes.md --latest
